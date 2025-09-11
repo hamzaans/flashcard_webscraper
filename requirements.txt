@@ -1,0 +1,10 @@
+genanki==0.13.0
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+spacy==3.7.2
+nltk==3.8.1
+textstat==0.7.3
+ollama==0.1.7
+firecrawl-py==0.0.16
+python-dotenv==1.0.0

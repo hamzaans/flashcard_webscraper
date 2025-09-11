@@ -1,0 +1,7 @@
+# Copy this file to .env and fill in your API keys
+
+# Firecrawl API Key (required for enhanced web scraping and content analysis)
+# Get it from: https://firecrawl.dev/
+FIRECRAWL_API_KEY=your_firecrawl_api_key_here
+
+# Note: Ollama runs locally - no API key needed for the LLM component
