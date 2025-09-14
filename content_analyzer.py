@@ -57,15 +57,43 @@ class ContentAnalyzer:
         self.ollama_model = ollama_model
         self._check_ollama_availability()
         
-        # Topic keywords for classification
+        # Comprehensive topic keywords for classification
         self.topic_keywords = {
-            'biology': ['cell', 'organism', 'dna', 'protein', 'gene', 'evolution', 'species', 'mitochondria', 'photosynthesis', 'respiration', 'enzyme', 'membrane', 'nucleus', 'chromosome', 'bacteria', 'virus', 'immune', 'hormone', 'metabolism'],
-            'chemistry': ['molecule', 'atom', 'compound', 'reaction', 'bond', 'element', 'acid', 'base', 'solution', 'catalyst', 'oxidation', 'reduction', 'synthesis', 'polymer', 'crystal', 'ion', 'electron', 'proton', 'neutron'],
-            'physics': ['energy', 'force', 'mass', 'velocity', 'acceleration', 'momentum', 'quantum', 'wave', 'particle', 'electromagnetic', 'gravity', 'thermodynamics', 'entropy', 'relativity', 'photon', 'electron', 'nuclear', 'radiation'],
-            'mathematics': ['equation', 'function', 'derivative', 'integral', 'matrix', 'vector', 'algebra', 'geometry', 'calculus', 'statistics', 'probability', 'theorem', 'proof', 'variable', 'coefficient', 'polynomial', 'trigonometry'],
-            'history': ['war', 'battle', 'empire', 'kingdom', 'revolution', 'century', 'ancient', 'medieval', 'renaissance', 'civilization', 'culture', 'society', 'government', 'politics', 'economy', 'trade', 'migration'],
-            'literature': ['novel', 'poetry', 'author', 'character', 'plot', 'theme', 'symbolism', 'metaphor', 'narrative', 'genre', 'style', 'criticism', 'analysis', 'interpretation', 'text', 'writing'],
-            'computer science': ['algorithm', 'programming', 'software', 'hardware', 'database', 'network', 'security', 'artificial intelligence', 'machine learning', 'data structure', 'compiler', 'operating system', 'protocol', 'encryption']
+            # Sciences
+            'biology': ['cell', 'organism', 'dna', 'protein', 'gene', 'evolution', 'species', 'mitochondria', 'photosynthesis', 'respiration', 'enzyme', 'membrane', 'nucleus', 'chromosome', 'bacteria', 'virus', 'immune', 'hormone', 'metabolism', 'ecosystem', 'biodiversity', 'genetics', 'molecular', 'cellular', 'organismal', 'population', 'community'],
+            'chemistry': ['molecule', 'atom', 'compound', 'reaction', 'bond', 'element', 'acid', 'base', 'solution', 'catalyst', 'oxidation', 'reduction', 'synthesis', 'polymer', 'crystal', 'ion', 'electron', 'proton', 'neutron', 'organic', 'inorganic', 'biochemistry', 'thermodynamics', 'kinetics'],
+            'physics': ['energy', 'force', 'mass', 'velocity', 'acceleration', 'momentum', 'quantum', 'wave', 'particle', 'electromagnetic', 'gravity', 'thermodynamics', 'entropy', 'relativity', 'photon', 'electron', 'nuclear', 'radiation', 'mechanics', 'optics', 'acoustics', 'magnetism'],
+            'mathematics': ['equation', 'function', 'derivative', 'integral', 'matrix', 'vector', 'algebra', 'geometry', 'calculus', 'statistics', 'probability', 'theorem', 'proof', 'variable', 'coefficient', 'polynomial', 'trigonometry', 'topology', 'number theory', 'discrete', 'linear algebra'],
+            
+            # Social Sciences & Humanities
+            'history': ['war', 'battle', 'empire', 'kingdom', 'revolution', 'century', 'ancient', 'medieval', 'renaissance', 'civilization', 'culture', 'society', 'government', 'politics', 'economy', 'trade', 'migration', 'dynasty', 'chronology', 'archaeology', 'historiography'],
+            'literature': ['novel', 'poetry', 'author', 'character', 'plot', 'theme', 'symbolism', 'metaphor', 'narrative', 'genre', 'style', 'criticism', 'analysis', 'interpretation', 'text', 'writing', 'prose', 'verse', 'drama', 'fiction', 'nonfiction'],
+            'philosophy': ['ethics', 'morality', 'existence', 'reality', 'knowledge', 'truth', 'logic', 'reasoning', 'metaphysics', 'epistemology', 'aesthetics', 'consciousness', 'free will', 'determinism', 'skepticism', 'pragmatism', 'existentialism', 'stoicism', 'utilitarianism', 'virtue'],
+            'religion': ['god', 'divine', 'sacred', 'holy', 'worship', 'prayer', 'faith', 'belief', 'spiritual', 'theology', 'scripture', 'prophet', 'messiah', 'salvation', 'sin', 'virtue', 'ritual', 'ceremony', 'church', 'temple', 'mosque', 'synagogue', 'buddhism', 'christianity', 'islam', 'judaism', 'hinduism', 'hadith', 'quran', 'bible', 'torah'],
+            'psychology': ['mind', 'behavior', 'cognitive', 'emotion', 'personality', 'consciousness', 'unconscious', 'therapy', 'mental', 'psychological', 'behavioral', 'developmental', 'social', 'clinical', 'neuroscience', 'brain', 'memory', 'learning', 'perception'],
+            'sociology': ['society', 'social', 'community', 'group', 'institution', 'culture', 'socialization', 'inequality', 'class', 'race', 'gender', 'ethnicity', 'demographics', 'social structure', 'social change', 'socialization', 'deviance', 'social control'],
+            'anthropology': ['culture', 'society', 'human', 'evolution', 'archaeology', 'ethnography', 'fieldwork', 'cultural', 'social', 'linguistic', 'physical', 'primatology', 'paleontology', 'hominid', 'artifact', 'excavation'],
+            'political science': ['government', 'politics', 'democracy', 'authoritarianism', 'policy', 'election', 'voting', 'legislature', 'executive', 'judiciary', 'constitution', 'rights', 'freedom', 'liberty', 'justice', 'law', 'governance', 'state', 'nation'],
+            'economics': ['economy', 'economic', 'market', 'supply', 'demand', 'price', 'money', 'inflation', 'recession', 'gdp', 'trade', 'commerce', 'finance', 'banking', 'investment', 'capital', 'labor', 'production', 'consumption', 'macroeconomics', 'microeconomics'],
+            
+            # Technology & Engineering
+            'computer science': ['algorithm', 'programming', 'software', 'hardware', 'database', 'network', 'security', 'artificial intelligence', 'machine learning', 'data structure', 'compiler', 'operating system', 'protocol', 'encryption', 'cybersecurity', 'cloud computing', 'blockchain'],
+            'engineering': ['design', 'construction', 'mechanical', 'electrical', 'civil', 'chemical', 'aerospace', 'biomedical', 'materials', 'systems', 'infrastructure', 'innovation', 'technology', 'manufacturing', 'automation'],
+            
+            # Arts & Creative
+            'art': ['painting', 'sculpture', 'drawing', 'visual', 'aesthetic', 'creative', 'artist', 'gallery', 'museum', 'exhibition', 'artistic', 'composition', 'color', 'form', 'texture', 'perspective', 'renaissance', 'impressionism', 'modernism'],
+            'music': ['melody', 'harmony', 'rhythm', 'composition', 'instrument', 'orchestra', 'symphony', 'concerto', 'sonata', 'classical', 'jazz', 'rock', 'pop', 'musical', 'acoustic', 'electronic', 'performance', 'conductor'],
+            
+            # Health & Medicine
+            'medicine': ['medical', 'health', 'disease', 'treatment', 'diagnosis', 'symptom', 'patient', 'doctor', 'physician', 'hospital', 'clinic', 'surgery', 'therapy', 'pharmaceutical', 'drug', 'medication', 'anatomy', 'physiology', 'pathology'],
+            
+            # Other Disciplines
+            'geography': ['geographic', 'location', 'place', 'region', 'country', 'continent', 'climate', 'weather', 'environment', 'landscape', 'population', 'urban', 'rural', 'migration', 'demographics', 'cartography', 'topography'],
+            'linguistics': ['language', 'linguistic', 'grammar', 'syntax', 'semantics', 'phonetics', 'phonology', 'morphology', 'pragmatics', 'discourse', 'translation', 'bilingual', 'multilingual', 'dialect', 'accent', 'communication'],
+            'education': ['learning', 'teaching', 'education', 'pedagogy', 'curriculum', 'instruction', 'student', 'teacher', 'school', 'university', 'academic', 'scholarship', 'research', 'knowledge', 'skill', 'competency'],
+            'business': ['business', 'management', 'organization', 'company', 'corporation', 'enterprise', 'strategy', 'marketing', 'finance', 'accounting', 'leadership', 'administration', 'operations', 'human resources', 'entrepreneurship'],
+            'law': ['legal', 'law', 'justice', 'court', 'judge', 'lawyer', 'attorney', 'legislation', 'statute', 'regulation', 'constitution', 'rights', 'liability', 'contract', 'tort', 'criminal', 'civil', 'jurisdiction'],
+            'general': []  # Fallback for unrecognized content
         }
     
     def _check_ollama_availability(self):
@@ -95,14 +123,82 @@ class ContentAnalyzer:
     
     def identify_topic(self, content: str) -> str:
         """
-        Identify the main topic/subject of the content using keyword matching.
+        Identify the main topic/subject of the content using AI-enhanced classification.
         
         Args:
             content: The text content to analyze
             
         Returns:
-            The identified topic (e.g., "biology", "history", "mathematics")
+            The identified topic (e.g., "biology", "history", "mathematics", "religion")
         """
+        try:
+            # First, try AI-powered classification if Ollama is available
+            if self.ollama_model is not None:
+                ai_topic = self._identify_topic_with_ai(content)
+                if ai_topic and ai_topic != "general":
+                    logger.info(f"AI identified topic: {ai_topic}")
+                    return ai_topic
+            
+            # Fallback to keyword matching
+            return self._identify_topic_with_keywords(content)
+            
+        except Exception as e:
+            logger.error(f"Error identifying topic: {str(e)}")
+            return "general"
+    
+    def _identify_topic_with_ai(self, content: str) -> str:
+        """Use AI to identify the topic of the content."""
+        try:
+            # Get list of available topics
+            topics = list(self.topic_keywords.keys())
+            topics_str = ", ".join(topics)
+            
+            prompt = f"""
+You are an expert content classifier. Analyze the following text and identify the primary academic discipline or subject area it belongs to.
+
+Available topics: {topics_str}
+
+Instructions:
+1. Read the text carefully
+2. Identify the main subject/discipline
+3. Consider the context, terminology, and focus of the content
+4. Return ONLY the topic name (e.g., "religion", "philosophy", "biology", "history")
+5. If the content is interdisciplinary, choose the PRIMARY focus
+6. If unclear, return "general"
+
+IMPORTANT CLASSIFICATION GUIDELINES:
+- Religious content (theology, scripture, worship, faith, religious practices) → "religion"
+- Philosophical content (ethics, metaphysics, logic, reasoning about existence) → "philosophy"
+- Scientific content (biology, chemistry, physics, mathematics) → respective science topic
+- Historical content (events, periods, civilizations, wars) → "history"
+- Literary content (novels, poetry, literary analysis) → "literature"
+
+Text to analyze:
+{content[:2000]}
+
+Topic:"""
+
+            response = ollama.chat(
+                model=self.ollama_model,
+                messages=[{"role": "user", "content": prompt}],
+                options={'temperature': 0.1}
+            )
+            
+            result = response['message']['content'].strip().lower()
+            
+            # Validate the response
+            if result in self.topic_keywords:
+                return result
+            else:
+                logger.warning(f"AI returned invalid topic: {result}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error in AI topic identification: {str(e)}")
+            return None
+    
+    def _identify_topic_with_keywords(self, content: str) -> str:
+        """Fallback keyword-based topic identification."""
         try:
             # Convert content to lowercase for matching
             content_lower = content.lower()
@@ -119,14 +215,14 @@ class ContentAnalyzer:
             if topic_scores:
                 best_topic = max(topic_scores, key=topic_scores.get)
                 if topic_scores[best_topic] > 0:
-                    logger.info(f"Identified topic: {best_topic} (score: {topic_scores[best_topic]})")
+                    logger.info(f"Keyword-based topic: {best_topic} (score: {topic_scores[best_topic]})")
                     return best_topic
             
             logger.info("No specific topic identified, using 'general'")
             return "general"
             
         except Exception as e:
-            logger.error(f"Error identifying topic: {str(e)}")
+            logger.error(f"Error in keyword topic identification: {str(e)}")
             return "general"
     
     def extract_key_terms(self, content: str, topic: str) -> List[str]:
@@ -388,7 +484,9 @@ JSON format:
             'address', 'portal', 'random', 'page', 'wiki', 'wikipedia',
             'category', 'template', 'namespace', 'redirect', 'disambiguation',
             'images', 'media', 'tools', 'edits', 'encyclopedia', 'article',
-            'copyright', 'contents', 'donation', 'donate'
+            'copyright', 'contents', 'donation', 'donate', 'list', 'free',
+            'learn about wikipedia', 'recentchanges', 'changes', 'search',
+            'pages', 'content', 'edit', 'academics', 'notes'
         ]
         
         if term in web_elements:
