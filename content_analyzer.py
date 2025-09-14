@@ -528,7 +528,7 @@ JSON format:
     
     def find_term_contexts(self, content: str, terms: List[str]) -> List[Dict[str, str]]:
         """
-        Find sentences or contexts where each term appears.
+        Find sentences or contexts where each term appears, prioritizing definition sentences.
         
         Args:
             content: The text content to search in
@@ -542,26 +542,100 @@ JSON format:
         
         for term in terms:
             term_contexts = []
+            definition_sentences = []
+            
             for sentence in sentences:
                 if term.lower() in sentence.lower() and len(sentence.strip()) > 10:
                     # Clean up the sentence
                     clean_sentence = re.sub(r'\s+', ' ', sentence.strip())
                     if len(clean_sentence) > 20 and len(clean_sentence) < 200:
-                        term_contexts.append(clean_sentence)
+                        # Check if this sentence contains a definition
+                        if self._is_definition_sentence(clean_sentence, term):
+                            definition_sentences.append(clean_sentence)
+                        else:
+                            term_contexts.append(clean_sentence)
             
-            if term_contexts:
-                # Take the first few relevant contexts
+            # Prioritize definition sentences
+            all_contexts = definition_sentences + term_contexts
+            
+            if all_contexts:
                 contexts.append({
                     'term': term,
-                    'contexts': term_contexts[:3]  # Limit to 3 contexts per term
+                    'contexts': all_contexts[:3],  # Limit to 3 contexts per term
+                    'has_definition': len(definition_sentences) > 0
                 })
         
         return contexts
     
+    def _is_definition_sentence(self, sentence: str, term: str) -> bool:
+        """Check if a sentence contains a definition of the term."""
+        sentence_lower = sentence.lower()
+        term_lower = term.lower()
+        
+        # Common definition patterns
+        definition_patterns = [
+            rf'{re.escape(term_lower)}\s+is\s+',  # "term is"
+            rf'{re.escape(term_lower)}\s+refers\s+to\s+',  # "term refers to"
+            rf'{re.escape(term_lower)}\s+means\s+',  # "term means"
+            rf'{re.escape(term_lower)}\s+denotes\s+',  # "term denotes"
+            rf'{re.escape(term_lower)}\s+signifies\s+',  # "term signifies"
+            rf'defined\s+as\s+.*{re.escape(term_lower)}',  # "defined as ... term"
+            rf'definition\s+.*{re.escape(term_lower)}',  # "definition ... term"
+            rf'{re.escape(term_lower)}\s+\([^)]+\)',  # "term (definition)"
+            rf'\([^)]*{re.escape(term_lower)}[^)]*\)',  # "(definition term)"
+        ]
+        
+        for pattern in definition_patterns:
+            if re.search(pattern, sentence_lower):
+                return True
+        
+        # Check for "the term X" or "X, the" patterns
+        if re.search(rf'the\s+{re.escape(term_lower)}', sentence_lower) or \
+           re.search(rf'{re.escape(term_lower)},\s+the', sentence_lower):
+            return True
+        
+        return False
+    
+    def extract_definition_from_content(self, term: str, context: str) -> str:
+        """Extract a clear definition of the term from the content context."""
+        if not context:
+            return ""
+        
+        # Look for definition patterns in the context
+        definition_patterns = [
+            rf'{re.escape(term.lower())}\s+is\s+([^.!?]+)',
+            rf'{re.escape(term.lower())}\s+refers\s+to\s+([^.!?]+)',
+            rf'{re.escape(term.lower())}\s+means\s+([^.!?]+)',
+            rf'{re.escape(term.lower())}\s+denotes\s+([^.!?]+)',
+            rf'{re.escape(term.lower())}\s+signifies\s+([^.!?]+)',
+            rf'defined\s+as\s+([^.!?]*{re.escape(term.lower())}[^.!?]*)',
+            rf'\(([^)]*{re.escape(term.lower())}[^)]*)\)',  # Parenthetical definitions
+        ]
+        
+        context_lower = context.lower()
+        
+        for pattern in definition_patterns:
+            match = re.search(pattern, context_lower)
+            if match:
+                definition = match.group(1).strip()
+                # Clean up the definition
+                definition = re.sub(r'\s+', ' ', definition)
+                if len(definition) > 10 and len(definition) < 200:
+                    return definition
+        
+        # Look for parenthetical definitions like "term (definition)"
+        paren_pattern = rf'{re.escape(term.lower())}\s*\(([^)]+)\)'
+        match = re.search(paren_pattern, context_lower)
+        if match:
+            definition = match.group(1).strip()
+            if len(definition) > 5 and len(definition) < 100:
+                return definition
+        
+        return ""
+    
     def generate_flashcard_content(self, term: str, context: str, topic: str) -> Tuple[str, str]:
         """
-        Generate question and answer for a flashcard using Ollama for intelligent definitions.
-        Creates a mix of term-definition cards and knowledge-testing questions.
+        Generate question and answer for a flashcard, prioritizing content-based definitions.
         
         Args:
             term: The key term
@@ -572,6 +646,17 @@ JSON format:
             Tuple of (question, answer)
         """
         try:
+            # First, try to extract definition directly from content
+            content_definition = self.extract_definition_from_content(term, context)
+            
+            if content_definition:
+                # Use the definition found in content
+                question = f"What is {term}?"
+                answer = content_definition
+                logger.info(f"Using content-based definition for {term}")
+                return question, answer
+            
+            # If no clear definition found in content, use AI
             if self.ollama_model is None:
                 logger.warning("Ollama not available, using fallback method")
                 return self._generate_flashcard_fallback(term, context, topic)
