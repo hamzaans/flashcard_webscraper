@@ -53,16 +53,18 @@ class WebScraper:
                 }
             )
             
-            if not scrape_result or not scrape_result.get('success'):
-                logger.warning(f"Firecrawl failed for {url}, falling back to local scraping")
+            # Check if Firecrawl response is valid
+            if not scrape_result:
+                logger.warning(f"Firecrawl returned empty response for {url}, falling back to local scraping")
                 return self._fallback_scrape(url)
             
             # Extract content from Firecrawl result
-            content = scrape_result.get('data', {})
-            title = content.get('metadata', {}).get('title', '')
-            description = content.get('metadata', {}).get('description', '')
-            markdown_content = content.get('markdown', '')
-            html_content = content.get('html', '')
+            # Firecrawl returns data directly, not wrapped in a 'data' field
+            title = scrape_result.get('metadata', {}).get('title', '')
+            description = scrape_result.get('metadata', {}).get('description', '')
+            markdown_content = scrape_result.get('markdown', '')
+            html_content = scrape_result.get('html', '')
+            content = scrape_result.get('content', '')
             
             # If no markdown content, try to extract from HTML
             if not markdown_content and html_content:
@@ -76,6 +78,7 @@ class WebScraper:
                 'description': description,
                 'markdown': markdown_content,
                 'html': html_content,
+                'content': content,  # Add the main content field
                 'metadata': {
                     'title': title,
                     'description': description,
@@ -86,6 +89,7 @@ class WebScraper:
                 
         except Exception as e:
             logger.error(f"Exception while scraping {url} with Firecrawl: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
             logger.info("Falling back to local scraping...")
             return self._fallback_scrape(url)
     
@@ -114,8 +118,20 @@ class WebScraper:
                 description = meta_desc.get('content', '').strip()
             
             # Remove unwanted elements
-            for element in soup(['script', 'style', 'nav', 'footer', 'header', 'aside']):
+            for element in soup(['script', 'style', 'nav', 'footer', 'header', 'aside', 'menu', 'sidebar']):
                 element.decompose()
+            
+            # Remove elements with common navigation classes/IDs
+            nav_selectors = [
+                '.nav', '.navigation', '.menu', '.sidebar', '.breadcrumb',
+                '.pagination', '.footer', '.header', '.topbar', '.navbar',
+                '#nav', '#navigation', '#menu', '#sidebar', '#breadcrumb',
+                '#pagination', '#footer', '#header', '#topbar', '#navbar'
+            ]
+            
+            for selector in nav_selectors:
+                for element in soup.select(selector):
+                    element.decompose()
             
             # Extract main content
             main_content = self._extract_main_content(soup)
@@ -188,9 +204,44 @@ class WebScraper:
         for line in lines:
             line = line.strip()
             if line and len(line) > 10:  # Filter out very short lines
-                cleaned_lines.append(line)
+                # Remove common URL patterns and navigation text
+                if not self._is_navigation_line(line):
+                    cleaned_lines.append(line)
         
         return '\n'.join(cleaned_lines)
+    
+    def _is_navigation_line(self, line: str) -> bool:
+        """Check if a line contains navigation or irrelevant content."""
+        # Common navigation patterns
+        nav_patterns = [
+            r'^[a-z]+&[a-z]+',  # URL parameters
+            r'^[a-z]+#[a-z]+',  # URL fragments
+            r'^[a-z]+/[a-z]+',  # URL paths
+            r'^[a-z]+\.[a-z]+',  # File extensions
+            r'^[a-z]+:[a-z]+',  # Protocols
+            r'^[a-z]+\([a-z]+\)',  # Function calls
+            r'^[a-z]+\[[a-z]+\]',  # Array access
+            r'^[a-z]+\{[a-z]+\}',  # Object access
+        ]
+        
+        for pattern in nav_patterns:
+            if re.match(pattern, line.lower()):
+                return True
+        
+        # Common navigation text
+        nav_text = [
+            'userlogin', 'returnto', 'donate', 'sidebar', 'wmf_medium',
+            'wmf_campaign', 'special', 'edit', 'history', 'talk',
+            'contributions', 'log', 'create', 'account', 'preferences',
+            'watchlist', 'beta', 'vector', 'minerva', 'help', 'articles'
+        ]
+        
+        line_lower = line.lower()
+        for nav_word in nav_text:
+            if nav_word in line_lower and len(line) < 50:  # Short lines with nav words
+                return True
+        
+        return False
     
     def _html_to_markdown_fallback(self, html_content: str) -> str:
         """Convert HTML to markdown-like text as fallback."""

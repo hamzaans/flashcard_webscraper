@@ -268,6 +268,16 @@ JSON format:
     
     def _is_topic_relevant(self, term: str, topic: str) -> bool:
         """Check if a term is relevant to the given topic."""
+        # First, filter out obviously irrelevant terms
+        if self._is_irrelevant_term(term):
+            return False
+        
+        # For scientific topics, be more strict about term relevance
+        if topic in ['biology', 'chemistry', 'physics', 'medicine']:
+            # Check if term looks like a scientific term, but be more lenient
+            if not self._looks_like_scientific_term(term) and not self._is_generally_relevant_term(term):
+                return False
+            
         topic_keywords = self.topic_keywords.get(topic, [])
         
         # Check if term appears in topic keywords
@@ -281,6 +291,118 @@ JSON format:
         
         # Check if term appears frequently in the content (indicating importance)
         return True  # For now, include all terms and let filtering happen later
+    
+    def _looks_like_scientific_term(self, term: str) -> bool:
+        """Check if a term looks like it could be a scientific term."""
+        # Scientific terms often have specific patterns
+        scientific_patterns = [
+            r'.*osis$',  # e.g., photosynthesis, mitosis
+            r'.*ism$',   # e.g., metabolism, mechanism
+            r'.*ase$',   # e.g., enzyme names
+            r'.*gen$',   # e.g., oxygen, hydrogen
+            r'.*phil$',  # e.g., hydrophilic
+            r'.*phob$',  # e.g., hydrophobic
+            r'.*cyte$',  # e.g., erythrocyte
+            r'.*some$',  # e.g., ribosome, chromosome
+            r'.*plasm$', # e.g., cytoplasm, nucleoplasm
+            r'.*membrane$', # e.g., cell membrane
+            r'.*protein$',  # e.g., protein
+            r'.*acid$',     # e.g., amino acid
+            r'.*base$',     # e.g., nitrogenous base
+            r'.*ion$',      # e.g., cation, anion
+            r'.*molecule$', # e.g., molecule
+            r'.*compound$', # e.g., compound
+            r'.*reaction$', # e.g., chemical reaction
+            r'.*process$',  # e.g., biological process
+            r'.*function$', # e.g., cellular function
+            r'.*structure$', # e.g., molecular structure
+        ]
+        
+        for pattern in scientific_patterns:
+            if re.match(pattern, term, re.IGNORECASE):
+                return True
+        
+        # Check if it's a common scientific prefix/suffix
+        scientific_affixes = [
+            'mito', 'cyto', 'nucleo', 'ribo', 'chloro', 'photo', 'synthesis',
+            'metabolism', 'cellular', 'molecular', 'biological', 'chemical',
+            'organic', 'inorganic', 'atomic', 'molecular', 'genetic', 'dna',
+            'rna', 'protein', 'enzyme', 'hormone', 'vitamin', 'mineral'
+        ]
+        
+        for affix in scientific_affixes:
+            if affix in term.lower():
+                return True
+        
+        # If it's a single word and looks like it could be scientific, include it
+        if len(term.split()) == 1 and len(term) > 4:
+            return True
+            
+        return False
+    
+    def _is_generally_relevant_term(self, term: str) -> bool:
+        """Check if a term is generally relevant even if not obviously scientific."""
+        # Include common scientific concepts that might not match patterns
+        relevant_terms = [
+            'energy', 'cell', 'membrane', 'protein', 'dna', 'rna', 'gene',
+            'molecule', 'atom', 'electron', 'proton', 'neutron', 'ion',
+            'acid', 'base', 'salt', 'water', 'oxygen', 'carbon', 'nitrogen',
+            'hydrogen', 'glucose', 'atp', 'adp', 'enzyme', 'hormone',
+            'vitamin', 'mineral', 'nutrient', 'metabolism', 'respiration',
+            'photosynthesis', 'mitosis', 'meiosis', 'chromosome', 'nucleus',
+            'cytoplasm', 'ribosome', 'endoplasmic', 'golgi', 'lysosome',
+            'vacuole', 'chloroplast', 'mitochondria', 'mitochondrion',
+            'bacteria', 'virus', 'fungus', 'plant', 'animal', 'human',
+            'tissue', 'organ', 'system', 'function', 'structure', 'process',
+            'reaction', 'synthesis', 'breakdown', 'decomposition', 'oxidation',
+            'reduction', 'catalysis', 'inhibition', 'activation', 'regulation'
+        ]
+        
+        return term.lower() in relevant_terms
+    
+    def _is_irrelevant_term(self, term: str) -> bool:
+        """Check if a term should be excluded as irrelevant."""
+        # Filter out URL parameters and navigation elements
+        irrelevant_patterns = [
+            r'^[a-z]+&[a-z]+',  # URL parameters like "userlogin&returnto"
+            r'^[a-z]+#[a-z]+',  # URL fragments like "mitochondrion#inner_membrane"
+            r'^[a-z]+_[a-z]+',  # Some URL patterns
+            r'^[a-z]+/[a-z]+',  # URL paths
+            r'^[a-z]+\.[a-z]+',  # File extensions or domains
+            r'^[a-z]+:[a-z]+',  # Protocols or other URL patterns
+            r'^[a-z]+\([a-z]+\)',  # Function calls or similar
+            r'^[a-z]+\[[a-z]+\]',  # Array access or similar
+            r'^[a-z]+\{[a-z]+\}',  # Object access or similar
+        ]
+        
+        for pattern in irrelevant_patterns:
+            if re.match(pattern, term):
+                return True
+        
+        # Filter out common web elements
+        web_elements = [
+            'content', 'articles', 'help', 'donate', 'sidebar', 'wmf_medium', 
+            'wmf_campaign', 'returnto', 'userlogin', 'special', 'edit',
+            'history', 'talk', 'contributions', 'log', 'create', 'account',
+            'preferences', 'watchlist', 'beta', 'vector', 'minerva',
+            'address', 'portal', 'random', 'page', 'wiki', 'wikipedia',
+            'category', 'template', 'namespace', 'redirect', 'disambiguation',
+            'images', 'media', 'tools', 'edits', 'encyclopedia', 'article',
+            'copyright', 'contents', 'donation', 'donate'
+        ]
+        
+        if term in web_elements:
+            return True
+        
+        # Filter out very short terms
+        if len(term) < 4:
+            return True
+            
+        # Filter out terms that are mostly numbers or special characters
+        if re.match(r'^[0-9\W]+$', term):
+            return True
+            
+        return False
     
     def _extract_terms_fallback(self, content: str, topic: str) -> List[str]:
         """Fallback keyword extraction when Ollama is not available."""
@@ -341,6 +463,7 @@ JSON format:
     def generate_flashcard_content(self, term: str, context: str, topic: str) -> Tuple[str, str]:
         """
         Generate question and answer for a flashcard using Ollama for intelligent definitions.
+        Creates a mix of term-definition cards and knowledge-testing questions.
         
         Args:
             term: The key term
@@ -355,18 +478,48 @@ JSON format:
                 logger.warning("Ollama not available, using fallback method")
                 return self._generate_flashcard_fallback(term, context, topic)
             
-            # Use Ollama to generate a proper definition
-            prompt = f"""
-You are an expert in {topic}. Create a high-quality flashcard for the term "{term}".
+            # Randomly choose between term-definition and knowledge-testing card types
+            import random
+            card_type = random.choice(['definition', 'question'])
+            
+            if card_type == 'definition':
+                # Generate a simple term-definition card
+                prompt = f"""
+You are an expert in {topic}. Create a simple term-definition flashcard for "{term}".
 
 Context from the source material:
 {context[:500]}
 
-Create:
+Create a straightforward definition card:
+1. Question: Simply ask "What is {term}?" or "Define {term}"
+2. Answer: Provide a clear, concise definition of "{term}" in the context of {topic}
+
+Requirements:
+- Keep it simple and direct
+- Focus on the core definition
+- Use the context provided but expand with your knowledge
+- Make it suitable for a student learning {topic}
+- Keep the answer concise but complete (1-2 sentences max)
+- Ensure accuracy and clarity
+
+Format your response as:
+QUESTION: [your question here]
+ANSWER: [your answer here]
+"""
+            else:
+                # Generate a knowledge-testing question
+                prompt = f"""
+You are an expert in {topic}. Create a knowledge-testing flashcard for the term "{term}".
+
+Context from the source material:
+{context[:500]}
+
+Create an educational question that tests understanding:
 1. A clear, educational question that tests understanding of "{term}"
 2. A comprehensive, accurate answer that explains "{term}" in the context of {topic}
 
 Requirements:
+- The question should test deeper understanding, not just memorization
 - The answer should be educational and informative
 - Use the context provided but expand with your knowledge
 - Make it suitable for a student learning {topic}
@@ -417,52 +570,80 @@ ANSWER: [your answer here]
     def _generate_flashcard_fallback(self, term: str, context: str, topic: str) -> Tuple[str, str]:
         """Fallback flashcard generation when Ollama is not available."""
         try:
+            import random
+            
+            # Randomly choose between term-definition and knowledge-testing card types
+            card_type = random.choice(['definition', 'question'])
+            
             # Clean the context
             context = context.strip()
             if len(context) > 200:
                 context = context[:200] + "..."
             
-            # Generate question
-            question = f"What is {term}?"
-            
-            # Try to extract a definition from the context
-            sentences = re.split(r'[.!?]+', context)
-            
-            # Find the sentence that best explains the term
-            best_sentence = ""
-            for sentence in sentences:
-                if term.lower() in sentence.lower() and len(sentence.strip()) > 20:
-                    best_sentence = sentence.strip()
-                    break
-            
-            if best_sentence:
-                # Clean up the sentence
-                answer = best_sentence
-                # Remove the term from the beginning if it starts with it
-                if answer.lower().startswith(term.lower()):
-                    answer = answer[len(term):].strip()
-                    if answer.startswith(' is '):
-                        answer = answer[4:]
-                    elif answer.startswith(' are '):
-                        answer = answer[5:]
-                    elif answer.startswith(' was '):
-                        answer = answer[5:]
-                    elif answer.startswith(' were '):
-                        answer = answer[6:]
-                    elif answer.startswith(' '):
-                        answer = answer[1:]
+            if card_type == 'definition':
+                # Generate simple term-definition card
+                question = f"What is {term}?"
                 
-                # Capitalize first letter
-                if answer:
-                    answer = answer[0].upper() + answer[1:]
+                # Try to extract a definition from the context
+                sentences = re.split(r'[.!?]+', context)
+                
+                # Find the sentence that best explains the term
+                best_sentence = ""
+                for sentence in sentences:
+                    if term.lower() in sentence.lower() and len(sentence.strip()) > 20:
+                        best_sentence = sentence.strip()
+                        break
+                
+                if best_sentence:
+                    # Clean up the sentence
+                    answer = best_sentence
+                    # Remove the term from the beginning if it starts with it
+                    if answer.lower().startswith(term.lower()):
+                        answer = answer[len(term):].strip()
+                        if answer.startswith(' is '):
+                            answer = answer[4:]
+                        elif answer.startswith(' are '):
+                            answer = answer[5:]
+                        elif answer.startswith(' was '):
+                            answer = answer[5:]
+                        elif answer.startswith(' were '):
+                            answer = answer[6:]
+                        elif answer.startswith(' '):
+                            answer = answer[1:]
+                    
+                    # Capitalize first letter
+                    if answer:
+                        answer = answer[0].upper() + answer[1:]
+                else:
+                    # Fallback answer
+                    answer = f"{term} is a key concept in {topic}."
             else:
-                # Fallback answer
-                answer = f"{term} is a key concept in {topic}. Context: {context[:100]}..."
+                # Generate knowledge-testing question
+                question = f"How does {term} work in {topic}?"
+                
+                # Try to extract explanatory content from the context
+                sentences = re.split(r'[.!?]+', context)
+                
+                # Find sentences that explain the term
+                explanatory_sentences = []
+                for sentence in sentences:
+                    if term.lower() in sentence.lower() and len(sentence.strip()) > 30:
+                        explanatory_sentences.append(sentence.strip())
+                
+                if explanatory_sentences:
+                    # Use the first explanatory sentence
+                    answer = explanatory_sentences[0]
+                    if not answer.endswith('.'):
+                        answer += "."
+                else:
+                    # Fallback explanation
+                    answer = f"{term} is an important concept in {topic} that plays a key role in understanding the subject matter."
             
             # Ensure answer is not too long
             if len(answer) > 300:
                 answer = answer[:300] + "..."
             
+            logger.info(f"Generated fallback flashcard for {term} (type: {card_type})")
             return question, answer
             
         except Exception as e:
